@@ -1,0 +1,7 @@
+{
+  "name": "sauce-api-helpers",
+  "version": "0.0.1",
+  "dependencies": {
+    "node-fetch": "^2.1.2"
+  }
+}
