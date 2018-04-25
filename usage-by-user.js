@@ -57,7 +57,7 @@ async function getArguments()
 
 function saveCsv(username, byUser)
 {
-    let csv = 'User,Year,Month,Jobs,Time\n';
+    let csv = 'User,Year,Month,Jobs,Time (seconds)\n';
 
     for (const username of byUser.keys())
     {
