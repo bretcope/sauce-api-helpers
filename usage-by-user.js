@@ -58,13 +58,13 @@ function saveCsv(username, byUser)
 {
     let csv = 'User,Year,Month,Jobs,Time (seconds)\n';
 
-    for (const username of byUser.keys())
+    for (const username in byUser)
     {
         if (!byUser.hasOwnProperty(username))
             continue;
 
         const userData = byUser[username];
-        for (const monthString of userData)
+        for (const monthString in userData)
         {
             if (!userData.hasOwnProperty(monthString))
                 continue;
