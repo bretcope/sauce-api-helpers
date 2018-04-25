@@ -2,6 +2,7 @@
 
 const fetch = require('node-fetch');
 const readline = require('readline');
+const fs = require('fs');
 
 async function main()
 {
@@ -13,6 +14,9 @@ async function main()
 
     const byUser = await getUsageByMonthByUser(usernames, auth, options.start, options.end);
     console.log(byUser);
+
+    if (options.saveCsv)
+        saveCsv(usernames, byUser);
 }
 
 async function getArguments()
@@ -35,17 +39,47 @@ async function getArguments()
         const start = await new Promise(resolve => rl.question('Start date (YYYY-MM-DD), or leave blank for default dates:', resolve));
         const end = await new Promise(resolve => rl.question('End date (YYYY-MM-DD), or leave blank for default dates:', resolve));
 
+        const csvAnswer = await new Promise(resolve => rl.question(`Would you like to save ~/${username}.csv? (y/n):`, resolve));
+
         return {
             username: username,
             apiKey: apiKey,
             start: start,
             end: end,
+            saveCsv: csvAnswer.toLowerCase() === 'y'
         };
     }
     finally
     {
         rl.close();
     }
+}
+
+function saveCsv(username, byUser)
+{
+    let csv = 'User,Year,Month,Jobs,Time\n';
+
+    for (const username of byUser.keys())
+    {
+        if (!byUser.hasOwnProperty(username))
+            continue;
+
+        const userData = byUser[username];
+        for (const monthString of userData)
+        {
+            if (!userData.hasOwnProperty(monthString))
+                continue;
+
+            const year = monthString.substr(0, 4);
+            const month = monthString.substr(5, 2);
+
+            csv += `${username},${year},${month},${userData[monthString].jobs},${userData[monthString].time}\n`;
+        }
+    }
+
+    const filename = `~/${username}.csv`;
+    fs.writeFileSync(filename, csv);
+    console.log('Wrote file ' + filename);
 }
 
 /**
