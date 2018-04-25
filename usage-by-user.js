@@ -90,9 +90,9 @@ function encodeBasicAuth(user, apiKey)
     return 'Basic ' + Buffer.from(format).toString('base64');
 }
 
-function sleep(duration)
+function apiRateLimitDelay()
 {
-    return new Promise(resolve => setTimeout(resolve, duration));
+    return new Promise(resolve => setTimeout(resolve, 100)); // API limit is 10 requests per second
 }
 
 async function getAllUsernamesFromParent(parentUsername, auth)
@@ -108,6 +108,8 @@ async function getAllUsernamesFromParent(parentUsername, auth)
 
 async function getSubUsers(username, auth)
 {
+    process.stdout.write(`Discovering sub accounts for '${username}'... `);
+    await apiRateLimitDelay();
     const url = `https://saucelabs.com/rest/v1/users/${username}/list-subaccounts`;
     const headers = { Authorization: auth };
     const res = await fetch(url, { headers: headers });
@@ -117,7 +119,9 @@ async function getSubUsers(username, auth)
         throw new Error('API Error');
     }
     const json = await res.json();
-    return json.users.map(u => u.username);
+    const usernames = await json.users.map(u => u.username);
+    process.stdout.write(`found ${usernames.length}\n`);
+    return usernames;
 }
 
 /**
@@ -183,15 +187,10 @@ async function getUsageByMonth(username, auth, start, end)
  */
 async function getUsageByMonthByUser(usernames, auth, start, end)
 {
-    let wait = false;
     let byUser = {};
     for (const username of usernames)
     {
-        if (wait)
-            await sleep(100); // wait 100 milliseconds between API calls
-        else
-            wait = true;
-
+        await apiRateLimitDelay();
         byUser[username] = await getUsageByMonth(username, auth, start, end);
     }
 
