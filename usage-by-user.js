@@ -76,7 +76,7 @@ async function getSubUsers(username, auth)
         console.error(res);
         throw new Error('API Error');
     }
-    const json = res.json();
+    const json = await res.json();
     return json.users.map(u => u.username);
 }
 
