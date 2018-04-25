@@ -6,7 +6,7 @@ const fs = require('fs');
 
 async function main()
 {
-    const options = getArguments();
+    const options = await getArguments();
 
     const auth = encodeBasicAuth(options.username, options.apiKey);
     const usernames = await getSubUsers(options.username, auth);
