@@ -103,7 +103,7 @@ async function getAllUsernamesFromParent(parentUsername, auth)
     {
         if (user.children_count > 0)
         {
-            usernames = usernames.concat(await getAllUsernamesFromParent(username, auth));
+            usernames = usernames.concat(await getAllUsernamesFromParent(user.username, auth));
         }
         else
         {
