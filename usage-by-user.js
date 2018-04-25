@@ -3,6 +3,8 @@
 const fetch = require('node-fetch');
 const readline = require('readline');
 const fs = require('fs');
+const os = require('os');
+const Path = require('path');
 
 async function main()
 {
@@ -15,7 +17,7 @@ async function main()
     console.log(byUser);
 
     if (options.saveCsv)
-        saveCsv(usernames, byUser);
+        saveCsv(options.username, byUser);
 }
 
 async function getArguments()
@@ -27,18 +29,18 @@ async function getArguments()
 
     try
     {
-        const username = await new Promise(resolve => rl.question('Username:', resolve));
+        const username = await new Promise(resolve => rl.question('Username: ', resolve));
         if (!username)
             throw new Error('Must provide a username.');
 
-        const apiKey = await new Promise(resolve => rl.question('API Access Key:', resolve));
+        const apiKey = await new Promise(resolve => rl.question('API Access Key: ', resolve));
         if (!apiKey)
             throw new Error('Must provide an API access key.');
 
-        const start = await new Promise(resolve => rl.question('Start date (YYYY-MM-DD), or leave blank for default dates:', resolve));
-        const end = await new Promise(resolve => rl.question('End date (YYYY-MM-DD), or leave blank for default dates:', resolve));
+        const start = await new Promise(resolve => rl.question('Start date (YYYY-MM-DD), or leave blank for default dates: ', resolve));
+        const end = await new Promise(resolve => rl.question('End date (YYYY-MM-DD), or leave blank for default dates: ', resolve));
 
-        const csvAnswer = await new Promise(resolve => rl.question(`Would you like to save ~/${username}.csv? (y/n):`, resolve));
+        const csvAnswer = await new Promise(resolve => rl.question(`Would you like to save ~/${username}.csv? (y/n): `, resolve));
 
         return {
             username: username,
@@ -76,7 +78,7 @@ function saveCsv(username, byUser)
         }
     }
 
-    const filename = `~/${username}.csv`;
+    const filename = Path.join(os.homedir(), username + '.csv');
     fs.writeFileSync(filename, csv);
     console.log('Wrote file ' + filename);
 }
