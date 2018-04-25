@@ -1,55 +1,51 @@
 #!/usr/bin/env node
 
 const fetch = require('node-fetch');
+const readline = require('readline');
 
 async function main()
 {
-    let parentUser = '';
-    let apiKey = '';
-    let start = '';
-    let end = '';
+    const options = getArguments();
 
-    for (let i = 2; i < process.argv.length; i++)
-    {
-        switch (process.argv[i])
-        {
-            case '-u':
-            case '--user':
-                parentUser = process.argv[i + 1];
-                i++;
-                break;
-            case '-k':
-            case '--key':
-                apiKey = process.argv[i + 1];
-                i++;
-                break;
-            case '-s':
-            case '--start':
-                start = process.argv[i + 1];
-                i++;
-                break;
-            case '-e':
-            case '--end':
-                end = process.argv[i + 1];
-                i++;
-                break;
-            default:
-                throw new Error('Unknown argument: ' + process.argv[i]);
-        }
-    }
+    const auth = encodeBasicAuth(options.username, options.apiKey);
+    const usernames = await getSubUsers(options.username, auth);
+    usernames.unshift(options.username);
 
-    if (!parentUser || !apiKey)
-    {
-        console.error('Must provide API user and key');
-        process.exit(1);
-    }
-
-    const auth = encodeBasicAuth(parentUser, apiKey);
-    const usernames = await getSubUsers(parentUser, auth);
-    usernames.unshift(parentUser);
-
-    const byUser = await getUsageByMonthByUser(usernames, auth, start, end);
+    const byUser = await getUsageByMonthByUser(usernames, auth, options.start, options.end);
     console.log(byUser);
+}
+
+async function getArguments()
+{
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+
+    try
+    {
+        const username = await new Promise(resolve => rl.question('Username:', resolve));
+        if (!username)
+            throw new Error('Must provide a username.');
+
+        const apiKey = await new Promise(resolve => rl.question('API Access Key:', resolve));
+        if (!apiKey)
+            throw new Error('Must provide an API access key.');
+
+        const start = await new Promise(resolve => rl.question('Start date (YYYY-MM-DD), or leave blank for default dates:', resolve));
+        const end = await new Promise(resolve => rl.question('End date (YYYY-MM-DD), or leave blank for default dates:', resolve));
+
+        return {
+            username: username,
+            apiKey: apiKey,
+            start: start,
+            end: end,
+        };
+    }
+    finally
+    {
+        rl.close();
+    }
 }
 
 /**
