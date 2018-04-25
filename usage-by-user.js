@@ -9,8 +9,7 @@ async function main()
     const options = await getArguments();
 
     const auth = encodeBasicAuth(options.username, options.apiKey);
-    const usernames = await getSubUsers(options.username, auth);
-    usernames.unshift(options.username);
+    const usernames = await getAllUsernamesFromParent(options.username, auth);
 
     const byUser = await getUsageByMonthByUser(usernames, auth, options.start, options.end);
     console.log(byUser);
@@ -94,6 +93,17 @@ function encodeBasicAuth(user, apiKey)
 function sleep(duration)
 {
     return new Promise(resolve => setTimeout(resolve, duration));
+}
+
+async function getAllUsernamesFromParent(parentUsername, auth)
+{
+    let usernames = [parentUsername];
+    let subUsernames = await getSubUsers(parentUsername, auth);
+    for (const username of subUsernames)
+    {
+        usernames = usernames.concat(await getAllUsernamesFromParent(username, auth));
+    }
+    return usernames;
 }
 
 async function getSubUsers(username, auth)
