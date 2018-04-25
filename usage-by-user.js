@@ -1,71 +1,122 @@
-const API_USER = 'USERNAME';
-const API_KEY = 'ACCESS_KEY';
-
-// list usernames, one per line
-const USERS = `
-user1
-user2
-user3
-`;
-
-// YYYY-DD-MM
-const START = '2018-01-01';
-const END = '2018-01-31';
-
-// =====================================================================================================================
+#!/usr/bin/env node
 
 const fetch = require('node-fetch');
+
+async function main()
+{
+    let parentUser = '';
+    let apiKey = '';
+    let start = '';
+    let end = '';
+
+    for (let i = 2; i < process.argv.length; i++)
+    {
+        switch (process.argv[i])
+        {
+            case '-u':
+            case '--user':
+                parentUser = process.argv[i + 1];
+                i++;
+                break;
+            case '-k':
+            case '--key':
+                apiKey = process.argv[i + 1];
+                i++;
+                break;
+            case '-s':
+            case '--start':
+                start = process.argv[i + 1];
+                i++;
+                break;
+            case '-e':
+            case '--end':
+                end = process.argv[i + 1];
+                i++;
+                break;
+            default:
+                throw new Error('Unknown argument: ' + process.argv[i]);
+        }
+    }
+
+    if (!parentUser || !apiKey)
+    {
+        console.error('Must provide API user and key');
+        process.exit(1);
+    }
+
+    const auth = encodeBasicAuth(parentUser, apiKey);
+    const usernames = await getSubUsers(parentUser, auth);
+    usernames.unshift(parentUser);
+
+    const byUser = await getUsageByMonthByUser(usernames, auth, start, end);
+    console.log(byUser);
+}
 
 /**
  * @returns {string}
  */
-function encodeBasicAuth()
+function encodeBasicAuth(user, apiKey)
 {
-    const format = API_USER + ':' + API_KEY;
+    const format = user + ':' + apiKey;
     return 'Basic ' + Buffer.from(format).toString('base64');
 }
-
-/**
- * @returns {string[]}
- */
-function getUserList()
-{
-    return USERS.split(/\r?\n/g).map(u => u ? u.trim() : '').filter(u => u !== '');
-}
-
-const USER_LIST = getUserList();
-const AUTH = encodeBasicAuth();
-
-console.log(USER_LIST);
-console.log(AUTH);
 
 function sleep(duration)
 {
     return new Promise(resolve => setTimeout(resolve, duration));
 }
 
+async function getSubUsers(username, auth)
+{
+    const url = `https://saucelabs.com/rest/v1/users/${username}/list-subaccounts`;
+    const headers = { Authorization: auth };
+    const res = await fetch(url, { headers: headers });
+    if (!res.ok)
+    {
+        console.error(res);
+        throw new Error('API Error');
+    }
+    const json = res.json();
+    return json.users.map(u => u.username);
+}
+
 /**
  * @param username {string}
+ * @param auth {string}
  * @param start {string}
  * @param end {string}
  */
-async function requestUsageByDay(username, start, end)
+async function requestUsageByDay(username, auth, start, end)
 {
     const url = `https://saucelabs.com/rest/v1/users/${username}/usage`;
-    const headers = { Authorization: AUTH };
-    const res = await fetch(url, headers);
+
+    let query = '';
+    if (start)
+        query += '?start=' + encodeURIComponent(start);
+
+    if (end)
+        query += (query ? '&' : '?') + 'end=' + encodeURIComponent(end);
+
+    const headers = { Authorization: auth };
+    const res = await fetch(url + query, { headers: headers });
+    if (!res.ok)
+    {
+        console.error(res);
+        throw new Error('API Error');
+    }
     return res.json();
 }
 
 /**
  * @param username {string}
+ * @param auth {string}
  * @param start {string}
  * @param end {string}
  */
-async function getUsageByMonth(username, start, end)
+async function getUsageByMonth(username, auth, start, end)
 {
     console.log(`Getting data for user ${username}...`);
-    const json = await requestUsageByDay(username, start, end);
+    const json = await requestUsageByDay(username, auth, start, end);
 
     let byMonth = {};
     for (const dayUsage of json.usage)
@@ -83,25 +134,28 @@ async function getUsageByMonth(username, start, end)
     return byMonth;
 }
 
-async function getUsageByMonthByUser(start, end)
+/**
+ * @param usernames {string[]}
+ * @param auth {string}
+ * @param start {string}
+ * @param end {string}
+ * @returns {Promise<void>}
+ */
+async function getUsageByMonthByUser(usernames, auth, start, end)
 {
     let wait = false;
     let byUser = {};
-    for (const username of USER_LIST)
+    for (const username of usernames)
     {
         if (wait)
             await sleep(100); // wait 100 milliseconds between API calls
         else
             wait = true;
 
-        byUser[username] = await getUsageByMonth(username, start, end);
+        byUser[username] = await getUsageByMonth(username, auth, start, end);
     }
 
     return byUser;
 }
 
-getUsageByMonthByUser(START, END)
-    .then(byUser => console.log(byUser))
-    .catch(err => console.error(err));
-
-
+main().catch(console.error);
