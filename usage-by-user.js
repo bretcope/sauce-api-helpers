@@ -98,10 +98,17 @@ function apiRateLimitDelay()
 async function getAllUsernamesFromParent(parentUsername, auth)
 {
     let usernames = [parentUsername];
-    let subUsernames = await getSubUsers(parentUsername, auth);
-    for (const username of subUsernames)
+    let subUsers = await getSubUsers(parentUsername, auth);
+    for (const user of subUsers)
     {
-        usernames = usernames.concat(await getAllUsernamesFromParent(username, auth));
+        if (user.children_count > 0)
+        {
+            usernames = usernames.concat(await getAllUsernamesFromParent(username, auth));
+        }
+        else
+        {
+            usernames.push(user.username);
+        }
     }
     return usernames;
 }
@@ -119,9 +126,9 @@ async function getSubUsers(username, auth)
         throw new Error('API Error');
     }
     const json = await res.json();
-    const usernames = await json.users.map(u => u.username);
-    process.stdout.write(`found ${usernames.length}\n`);
-    return usernames;
+    const users = await json.users;
+    process.stdout.write(`found ${users.length}\n`);
+    return users;
 }
 
 /**
